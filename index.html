@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>What I Trust in an Airline Passenger Forecast</title>
+  <meta name="description" content="A forecast postmortem on monthly airline passenger demand: decomposition, stationarity, seasonality, backtesting, and why exogenous promotion signals changed the result.">
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,700&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    :root {
+      --bg: #ffffff;
+      --panel: #f0f0f0;
+      --ink: #111111;
+      --ink-2: #1a1a1a;
+      --text: #333333;
+      --muted: #555555;
+      --light: #888888;
+      --rule: #ddd;
+      --divider: #e8e8e8;
+      --inverse: #f5f5f5;
+      --serif: "Newsreader", Georgia, serif;
+      --sans: "IBM Plex Sans", system-ui, sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+    }
+
+    html {
+      font-size: 16px;
+      -webkit-font-smoothing: antialiased;
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--serif);
+      line-height: 1.78;
+    }
+
+    a { color: inherit; }
+
+    .sheet {
+      max-width: 1220px;
+      margin: 0 auto;
+      padding: 1.5rem 1.5rem 5rem;
+    }
+
+    .masthead {
+      border-top: 2px solid var(--ink);
+      border-bottom: 1px solid var(--ink);
+      padding: 1.5rem 0 2rem;
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      gap: 2rem;
+      align-items: start;
+    }
+
+    .masthead-meta {
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      line-height: 1.9;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+
+    .masthead-meta strong {
+      display: block;
+      color: var(--ink);
+      font-weight: 500;
+      letter-spacing: 0.08em;
+    }
+
+    .kicker {
+      margin: 0 0 0.75rem;
+      font-family: var(--sans);
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: var(--light);
+    }
+
+    h1 {
+      margin: 0;
+      font-family: var(--serif);
+      font-size: clamp(2.5rem, 5vw, 4.6rem);
+      line-height: 0.96;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      max-width: 12ch;
+    }
+
+    .deck {
+      margin: 1rem 0 0;
+      max-width: 56rem;
+      font-family: var(--sans);
+      font-size: 1.08rem;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
+    .signal-strip {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 1px;
+      background: var(--ink);
+      margin-top: 1.75rem;
+    }
+
+    .signal {
+      background: var(--bg);
+      padding: 0.95rem 1rem 1.05rem;
+      min-height: 116px;
+    }
+
+    .signal-label {
+      display: block;
+      font-family: var(--mono);
+      font-size: 0.62rem;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--light);
+      margin-bottom: 0.5rem;
+    }
+
+    .signal-value {
+      display: block;
+      font-family: var(--sans);
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: var(--ink);
+      line-height: 1.1;
+      margin-bottom: 0.4rem;
+    }
+
+    .signal p {
+      margin: 0;
+      font-family: var(--sans);
+      font-size: 0.86rem;
+      line-height: 1.55;
+      color: var(--muted);
+    }
+
+    .lede-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 300px;
+      gap: 2rem;
+      margin-top: 2rem;
+      align-items: start;
+    }
+
+    .lede p,
+    .prose p {
+      margin: 0 0 1.15rem;
+      font-size: 1.03rem;
+      color: var(--text);
+    }
+
+    .sidecard {
+      border: 1px solid var(--ink);
+      padding: 1rem 1rem 1.05rem;
+      background: var(--panel);
+    }
+
+    .sidecard-title {
+      margin: 0 0 0.65rem;
+      font-family: var(--mono);
+      font-size: 0.64rem;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--light);
+    }
+
+    .sidecard p {
+      margin: 0 0 0.7rem;
+      font-family: var(--sans);
+      font-size: 0.86rem;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .sidecard p:last-child { margin-bottom: 0; }
+
+    .section {
+      margin-top: 3.5rem;
+      padding-top: 1.25rem;
+      border-top: 1px solid var(--rule);
+    }
+
+    .section-head {
+      display: grid;
+      grid-template-columns: 170px minmax(0, 1fr);
+      gap: 1.5rem;
+      align-items: end;
+      margin-bottom: 1.4rem;
+    }
+
+    .stamp {
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--light);
+      padding-top: 0.2rem;
+    }
+
+    h2 {
+      margin: 0;
+      font-family: var(--sans);
+      font-size: clamp(1.35rem, 2.4vw, 2.1rem);
+      line-height: 1.12;
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    h3 {
+      margin: 1.8rem 0 0.55rem;
+      font-family: var(--sans);
+      font-size: 0.96rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--ink);
+    }
+
+    .prose {
+      max-width: 820px;
+    }
+
+    .wide-figure {
+      margin: 2rem 0 2.3rem;
+      padding: 0.9rem 0 0;
+      border-top: 1px solid var(--ink);
+    }
+
+    .figure-tag {
+      margin: 0 0 0.7rem;
+      font-family: var(--mono);
+      font-size: 0.62rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--light);
+    }
+
+    figure {
+      margin: 0;
+    }
+
+    svg {
+      display: block;
+      width: 100%;
+      height: auto;
+      background: var(--bg);
+    }
+
+    figcaption {
+      margin-top: 0.8rem;
+      font-family: var(--sans);
+      font-size: 0.8rem;
+      line-height: 1.55;
+      color: var(--muted);
+      font-style: italic;
+      max-width: 860px;
+    }
+
+    .verdict {
+      margin: 2rem 0;
+      padding: 1rem 1.15rem;
+      background: var(--ink);
+      color: var(--inverse);
+    }
+
+    .verdict-label {
+      display: block;
+      margin-bottom: 0.45rem;
+      font-family: var(--mono);
+      font-size: 0.62rem;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: #bbb;
+    }
+
+    .verdict p {
+      margin: 0;
+      font-family: var(--sans);
+      font-size: 0.95rem;
+      line-height: 1.6;
+      color: var(--inverse);
+    }
+
+    .scoreboard {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.8rem 0;
+      font-family: var(--sans);
+      font-size: 0.88rem;
+    }
+
+    .scoreboard th,
+    .scoreboard td {
+      padding: 0.7rem 0.75rem;
+      border-bottom: 1px solid var(--divider);
+      vertical-align: top;
+      text-align: left;
+    }
+
+    .scoreboard th {
+      font-family: var(--mono);
+      font-size: 0.66rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--ink);
+      border-bottom: 2px solid var(--ink);
+    }
+
+    .scoreboard td {
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .scoreboard td.method {
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    .scoreboard td.best {
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    pre {
+      margin: 1.4rem 0 1.6rem;
+      padding: 1rem 1.15rem;
+      background: #111111;
+      color: #f5f5f5;
+      overflow-x: auto;
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      line-height: 1.68;
+    }
+
+    code {
+      font-family: var(--mono);
+      background: var(--panel);
+      color: var(--ink);
+      padding: 0.08em 0.3em;
+      font-size: 0.9em;
+    }
+
+    ul, ol {
+      margin: 0 0 1.2rem;
+      padding-left: 1.25rem;
+      color: var(--text);
+    }
+
+    li {
+      margin-bottom: 0.45rem;
+      font-size: 1rem;
+    }
+
+    .closing {
+      margin-top: 3.5rem;
+      padding-top: 1.25rem;
+      border-top: 2px solid var(--ink);
+      max-width: 820px;
+    }
+
+    .closing p:last-child { margin-bottom: 0; }
+
+    @media (max-width: 980px) {
+      .masthead,
+      .lede-grid,
+      .section-head {
+        grid-template-columns: 1fr;
+      }
+
+      .masthead-meta {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+      }
+
+      .stamp { padding-top: 0; }
+    }
+
+    @media (max-width: 760px) {
+      .sheet { padding-left: 1rem; padding-right: 1rem; }
+      .signal-strip { grid-template-columns: 1fr 1fr; }
+      .masthead-meta { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 560px) {
+      .signal-strip { grid-template-columns: 1fr; }
+      .scoreboard { font-size: 0.82rem; }
+      .scoreboard th, .scoreboard td { padding-left: 0.45rem; padding-right: 0.45rem; }
+    }
+  </style>
+</head>
+<body>
+  <main class="sheet">
+    <header class="masthead">
+      <div class="masthead-meta">
+        <div>
+          Series
+          <strong>Monthly passenger counts</strong>
+        </div>
+        <div>
+          Span
+          <strong>Jan 1949 to Dec 1960</strong>
+        </div>
+        <div>
+          Holdout
+          <strong>120 train / 24 test</strong>
+        </div>
+        <div>
+          Best notebook result
+          <strong>SARIMAX, RMSE 26.58</strong>
+        </div>
+      </div>
+      <div>
+        <p class="kicker">Forecast Postmortem / Airline Demand / Time-Series Discipline</p>
+        <h1>What I Trust in an Airline Passenger Forecast</h1>
+        <p class="deck">The hard part is not choosing between ARIMA and SARIMA. The hard part is deciding when a monthly passenger series has earned the right to influence aircraft assignment, crew planning, and inventory orders.</p>
+      </div>
+    </header>
+
+    <section class="signal-strip" aria-label="Key signals">
+      <div class="signal">
+        <span class="signal-label">Series behavior</span>
+        <span class="signal-value">Trend plus seasonality</span>
+        <p>Passenger levels rise over time and the peak-to-trough swing grows with them, which immediately rules out lazy flat-line assumptions.</p>
+      </div>
+      <div class="signal">
+        <span class="signal-label">Stationarity check</span>
+        <span class="signal-value">Raw series fails</span>
+        <p>`ADF p = 0.993` and `KPSS p = 0.01` say the same thing in different language: fit the raw series directly and you are modeling drift, not structure.</p>
+      </div>
+      <div class="signal">
+        <span class="signal-label">Best seasonal-only fit</span>
+        <span class="signal-value">Holt-Winters</span>
+        <p>The multiplicative Holt-Winters run lands at `RMSE 34.96`, which is a reminder that explicit seasonality often beats more theatrical model names.</p>
+      </div>
+      <div class="signal">
+        <span class="signal-label">Best overall fit</span>
+        <span class="signal-value">SARIMAX with promotion</span>
+        <p>Once the notebook adds an event series for promotions, error drops to `MAPE 4.64`, but only because the future event calendar is assumed to be known.</p>
+      </div>
+    </section>
+
+    <div class="lede-grid">
+      <div class="lede">
+        <p>An airline planner does not need another article that recites method names like badges of seriousness. They need to know whether the series in front of them is stable enough to project, seasonal enough to exploit, and transparent enough to defend when the network team asks why a route got a larger aircraft in July and a narrower one in November.</p>
+        <p>The notebook in this folder is more useful than it first appears because it runs through the correct sequence of questions even when the presentation blurs them: inspect the raw monthly passenger series, repair missing values, decompose trend and seasonality, test stationarity, compare baselines against seasonal models, then see whether an exogenous promotion signal earns its keep. That is the real story here. The algorithm list is just scaffolding.</p>
+        <p>I read this dataset as a single route-like demand history with 144 monthly observations from January 1949 to December 1960. The notebook trains on the first 120 months and scores the last 24 months out of time. That split is not perfect, but it is honest enough to expose a pattern many forecasting pages hide: once the series is visibly seasonal, any model that pretends the last observation or the global average is sufficient will fail in embarrassingly predictable ways.</p>
+      </div>
+      <aside class="sidecard">
+        <p class="sidecard-title">What matters here</p>
+        <p>This is not a fare-forecasting model, a route-profitability model, or a causal study of demand drivers. It is a monthly passenger-count forecast with one exogenous event flag.</p>
+        <p>That narrower scope is a strength. It forces the evaluation to stay close to operational use: how many people are likely to show up, when will peaks arrive, and how wrong can we afford to be?</p>
+      </aside>
+    </div>
+
+    <section class="section">
+      <div class="section-head">
+        <div class="stamp">Field Note 01 / Read the series before fitting it</div>
+        <h2>The first mistake is treating a passenger curve like a generic column of numbers</h2>
+      </div>
+      <div class="prose">
+        <p>The raw line is not subtle. Passenger counts start near `112` and climb into the `400+` range by the end of the sample. More important, the seasonal wave expands as the level rises. Summer peaks are not just higher in absolute terms because the route is growing; they are sharper relative to adjacent months. That is the textbook signature of multiplicative seasonality, and it should shape the rest of the modeling choices.</p>
+        <p>The notebook also walks through missing-value treatment and outlier inspection before it makes any forecasting claims. I like that, even though the classic airline series is usually clean. A quick interpolation step is cheap insurance. The point is not to manufacture sophistication. The point is to stop a forecast from quietly inheriting a data-quality problem and then pretending the residual error belongs to the model.</p>
+        <p>Decomposition is where the notebook starts behaving like a forecaster instead of a classifier wearing a watch. Additive decomposition is a useful first pass, but the multiplicative view is the one that matches the series: trend underneath, repeating monthly pattern on top, and an amplitude that scales with the base level. Once you see that, a lot of weaker ideas can be discarded early. A simple average ignores the calendar. A naive carry-forward ignores both trend and seasonality. Even a bare ARIMA without seasonal structure is fighting uphill.</p>
+      </div>
+
+      <div class="wide-figure">
+        <p class="figure-tag">Figure A / Seasonal strip</p>
+        <figure>
+          <svg viewBox="0 0 1100 700" role="img" aria-label="Layered seasonal strip showing raw passenger series, monthly seasonal pattern, and forecast band">
+            <defs>
+              <marker id="arrow-head" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" fill="#111111"></path>
+              </marker>
+            </defs>
+
+            <rect x="24" y="24" width="1052" height="652" fill="#ffffff" stroke="#111111" stroke-width="1.5"></rect>
+
+            <text x="50" y="62" font-family="IBM Plex Sans, sans-serif" font-size="22" font-weight="600" fill="#111111">Monthly demand behaves like a growing seasonal system, not a flat trend</text>
+
+            <rect x="50" y="90" width="1000" height="150" fill="#ffffff" stroke="#111111" stroke-width="1"></rect>
+            <text x="64" y="116" font-family="IBM Plex Mono, monospace" font-size="12" fill="#555555">RAW SERIES</text>
+            <line x1="90" y1="215" x2="1020" y2="215" stroke="#ddd" stroke-width="1"></line>
+            <line x1="90" y1="165" x2="1020" y2="165" stroke="#ddd" stroke-width="1"></line>
+            <line x1="90" y1="115" x2="1020" y2="115" stroke="#ddd" stroke-width="1"></line>
+            <text x="58" y="219" font-family="IBM Plex Mono, monospace" font-size="11" fill="#888888">100</text>
+            <text x="58" y="169" font-family="IBM Plex Mono, monospace" font-size="11" fill="#888888">250</text>
+            <text x="58" y="119" font-family="IBM Plex Mono, monospace" font-size="11" fill="#888888">400</text>
+            <polyline fill="none" stroke="#111111" stroke-width="2.2" points="90,208 110,201 130,186 150,189 170,197 190,183 210,170 230,171 250,181 270,199 290,211 310,202 330,198 350,188 370,173 390,176 410,184 430,169 450,155 470,157 490,169 510,188 530,200 550,190 570,184 590,170 610,154 630,158 650,164 670,148 690,131 710,134 730,147 750,165 770,177 790,167 810,158 830,143 850,121 870,126 890,136 910,108 930,85 950,90 970,108 990,128 1010,144" />
+            <line x1="850" y1="92" x2="850" y2="238" stroke="#111111" stroke-width="1" stroke-dasharray="4 5"></line>
+            <text x="862" y="108" font-family="IBM Plex Mono, monospace" font-size="11" fill="#555555">train/test cut</text>
+            <text x="90" y="236" font-family="IBM Plex Mono, monospace" font-size="11" fill="#888888">1949</text>
+            <text x="400" y="236" font-family="IBM Plex Mono, monospace" font-size="11" fill="#888888">1953</text>
+            <text x="708" y="236" font-family="IBM Plex Mono, monospace" font-size="11" fill="#888888">1957</text>
+            <text x="968" y="236" font-family="IBM Plex Mono, monospace" font-size="11" fill="#888888">1960</text>
+
+            <rect x="50" y="278" width="1000" height="145" fill="#ffffff" stroke="#111111" stroke-width="1"></rect>
+            <text x="64" y="304" font-family="IBM Plex Mono, monospace" font-size="12" fill="#555555">SEASONAL PROFILE</text>
+            <line x1="90" y1="350" x2="1020" y2="350" stroke="#111111" stroke-width="1"></line>
+            <polyline fill="none" stroke="#111111" stroke-width="2.2" points="110,352 180,338 250,304 320,312 390,333 460,302 530,279 600,281 670,304 740,336 810,359 880,341" />
+            <circle cx="530" cy="279" r="5" fill="#111111"></circle>
+            <text x="544" y="283" font-family="IBM Plex Sans, sans-serif" font-size="13" fill="#111111">summer crest</text>
+            <circle cx="810" cy="359" r="5" fill="#111111"></circle>
+            <text x="824" y="363" font-family="IBM Plex Sans, sans-serif" font-size="13" fill="#111111">late-year trough</text>
+            <text x="102" y="388" font-family="IBM Plex Mono, monospace" font-size="11" fill="#888888">Jan</text>
+            <text x="172" y="388" font-family="IBM Plex Mono, monospace" font-size="11" fill="#888888">Feb</text>
+            <text x="242" y="388" font-family="IBM Plex Mono, monospace" font-size="11" fill="#888888">Mar</text>
+            <text x="312" y="388" font-family="IBM Plex Mono, monospace" font-size="11" fill="#888888">Apr</text>
+            <text x="382" y="388" font-family="IBM Plex Mono, monospace" font-size="11" fill="#888888">May</text>
+            <text x="452" y="388" font-family="IBM Plex Mono, monospace" font-size="11" fill="#888888">Jun</text>
+            <text x="522" y="388" font-family="IBM Plex Mono, monospace" font-size="11" fill="#888888">Jul</text>
+            <text x="592" y="388" font-family="IBM Plex Mono, monospace" font-size="11" fill="#888888">Aug</text>
+            <text x="662" y="388" font-family="IBM Plex Mono, monospace" font-size="11" fill="#888888">Sep</text>
+            <text x="732" y="388" font-family="IBM Plex Mono, monospace" font-size="11" fill="#888888">Oct</text>
+            <text x="802" y="388" font-family="IBM Plex Mono, monospace" font-size="11" fill="#888888">Nov</text>
+            <text x="872" y="388" font-family="IBM Plex Mono, monospace" font-size="11" fill="#888888">Dec</text>
+
+            <rect x="50" y="460" width="1000" height="165" fill="#ffffff" stroke="#111111" stroke-width="1"></rect>
+            <text x="64" y="486" font-family="IBM Plex Mono, monospace" font-size="12" fill="#555555">FORECAST WITH UNCERTAINTY</text>
+            <line x1="90" y1="595" x2="1020" y2="595" stroke="#ddd" stroke-width="1"></line>
+            <line x1="90" y1="545" x2="1020" y2="545" stroke="#ddd" stroke-width="1"></line>
+            <line x1="90" y1="495" x2="1020" y2="495" stroke="#ddd" stroke-width="1"></line>
+            <polyline fill="none" stroke="#555555" stroke-width="2" points="90,590 140,571 190,554 240,560 290,573 340,548 390,520 440,524 490,548 540,576 590,588 640,573 690,558 740,530 790,502 840,510" />
+            <line x1="840" y1="472" x2="840" y2="623" stroke="#111111" stroke-width="1" stroke-dasharray="4 5"></line>
+            <polygon points="840,512 900,486 960,494 1020,520 1020,572 960,548 900,540 840,566" fill="#e8e8e8" stroke="#111111" stroke-width="1"></polygon>
+            <polyline fill="none" stroke="#111111" stroke-width="2.4" points="840,539 900,514 960,521 1020,548" />
+            <line x1="1020" y1="548" x2="1043" y2="548" stroke="#111111" stroke-width="1.5" marker-end="url(#arrow-head)"></line>
+            <text x="888" y="506" font-family="IBM Plex Sans, sans-serif" font-size="13" fill="#111111">central forecast path</text>
+            <text x="868" y="566" font-family="IBM Plex Sans, sans-serif" font-size="13" fill="#111111">uncertainty band widens forward</text>
+            <text x="90" y="618" font-family="IBM Plex Mono, monospace" font-size="11" fill="#888888">1958</text>
+            <text x="530" y="618" font-family="IBM Plex Mono, monospace" font-size="11" fill="#888888">1960</text>
+            <text x="965" y="618" font-family="IBM Plex Mono, monospace" font-size="11" fill="#888888">next 12 months</text>
+          </svg>
+          <figcaption>The series grows, the seasonal wave widens with that growth, and any usable forecast must show both the projected path and the widening room for error. The operational lesson is simple: plan with a band, not a point.</figcaption>
+        </figure>
+      </div>
+
+      <div class="verdict">
+        <span class="verdict-label">Postmortem call</span>
+        <p>If the seasonal amplitude expands as traffic rises, I would rather start with a multiplicative seasonal model and then justify walking away from it than start with a flat baseline and hope a more complicated method rescues the mistake.</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div class="stamp">Field Note 02 / Baselines still matter</div>
+        <h2>The error table becomes interesting only when the bad ideas are allowed to lose</h2>
+      </div>
+      <div class="prose">
+        <p>The notebook compares a healthy range of forecasters against the same 24-month holdout window. That matters. Too many forecasting demos jump straight to the most expensive model and never bother to prove that the extra machinery outperforms a seasonal baseline. Here the early methods lose exactly where they should.</p>
+        <p>The naive forecast, which simply carries the last training observation forward, posts `RMSE 137.51` and `MAPE 23.63`. The simple average is worse: `RMSE 219.69`, `MAPE 44.28`. Those numbers are not just mediocre. They are diagnostic. They say the series has too much level change and too much seasonality for static summaries to be useful.</p>
+        <p>Once the models begin respecting structure, error falls fast. Simple moving average gets to `RMSE 103.33`. Simple exponential smoothing lands at `107.65`. Holt's trend model cuts that to `71.94`. Then the seasonal methods take over. Holt-Winters additive reaches `35.10`, and the multiplicative variant edges it on RMSE at `34.96`. That jump is the entire article in miniature: the calendar, not generic curve-fitting, is doing the heavy lifting.</p>
+
+        <table class="scoreboard" aria-label="Forecast comparison table">
+          <thead>
+            <tr>
+              <th>Method</th>
+              <th>RMSE</th>
+              <th>MAPE</th>
+              <th>What it assumes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="method">Naive</td>
+              <td>137.51</td>
+              <td>23.63</td>
+              <td>Next month looks like the last one. Fine for a steady series, bad for a rising seasonal route.</td>
+            </tr>
+            <tr>
+              <td class="method">Simple average</td>
+              <td>219.69</td>
+              <td>44.28</td>
+              <td>Collapses the whole history into one mean. Useful mainly as a warning about what not to do.</td>
+            </tr>
+            <tr>
+              <td class="method">Simple moving average</td>
+              <td>103.33</td>
+              <td>15.54</td>
+              <td>Recent history matters more, but the method still flattens turning points.</td>
+            </tr>
+            <tr>
+              <td class="method">Simple exponential smoothing</td>
+              <td>107.65</td>
+              <td>16.49</td>
+              <td>Weights recent months, but without trend or seasonality it remains under-specified.</td>
+            </tr>
+            <tr>
+              <td class="method">Holt trend</td>
+              <td>71.94</td>
+              <td>11.11</td>
+              <td>Trend is real, but trend alone still misses the annual wave.</td>
+            </tr>
+            <tr>
+              <td class="method">Holt-Winters additive</td>
+              <td>35.10</td>
+              <td>6.53</td>
+              <td>Seasonality helps dramatically when the pattern repeats cleanly.</td>
+            </tr>
+            <tr>
+              <td class="method">Holt-Winters multiplicative</td>
+              <td class="best">34.96</td>
+              <td>6.94</td>
+              <td>Best seasonal-only RMSE because seasonal amplitude expands with level.</td>
+            </tr>
+            <tr>
+              <td class="method">AR / MA / ARMA</td>
+              <td>93.39 / 91.21 / 88.88</td>
+              <td>13.77 / 13.39 / 12.89</td>
+              <td>Autocorrelation helps, but non-seasonal forms still leave calendar structure on the table.</td>
+            </tr>
+            <tr>
+              <td class="method">ARIMA</td>
+              <td>88.88</td>
+              <td>12.89</td>
+              <td>Differencing fixes trend, not seasonality by itself.</td>
+            </tr>
+            <tr>
+              <td class="method">SARIMA</td>
+              <td>37.51</td>
+              <td>7.36</td>
+              <td>Seasonal autoregression catches the annual rhythm and nearly matches Holt-Winters.</td>
+            </tr>
+            <tr>
+              <td class="method">SARIMAX</td>
+              <td class="best">26.58</td>
+              <td class="best">4.64</td>
+              <td>Promotion events add incremental signal once the seasonal backbone is already in place.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p>I would not over-read tiny differences between neighboring models here. The Holt-Winters runs show convergence warnings in the notebook, which is a useful reminder that a better score does not mean the optimizer had a peaceful time getting there. But the broad ranking is robust enough to trust: respect seasonality first, then ask whether external events justify the extra complexity.</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div class="stamp">Field Note 03 / Stationarity is not optional</div>
+        <h2>ARIMA-family models only become respectable after the series stops wandering</h2>
+      </div>
+      <div class="prose">
+        <p>This is where forecasting articles often get sloppy. They mention stationarity as if it were a ceremony rather than a requirement. In plain language, a stationary series has a mean, variance, and autocorrelation structure that do not keep sliding around over time. Raw passenger demand here does slide. The notebook proves that with two tests that are best read together, not separately.</p>
+        <p>On the original series, the Augmented Dickey-Fuller statistic is `0.894609` with a `p-value of 0.993020`, which means we fail to reject the presence of a unit root. The KPSS result goes the other direction on purpose: statistic `1.052050`, `p-value 0.010000`, signaling that stationarity should be rejected. When both tests point toward non-stationarity, I stop debating and transform the series.</p>
+        <p>The notebook uses a Box-Cox transform with `lambda = 0`, which is effectively a log transform, and then differences the transformed series once. That is a sensible choice for a passenger count series whose variance expands with level. After the transform, the tests calm down. ADF moves to `-3.290114` with `p = 0.015326`, while KPSS drops to `0.101871` with `p = 0.100000`. That does not make the series magically simple. It does mean the ARIMA family can finally model something more coherent than raw growth.</p>
+
+<pre><code>from scipy.stats import boxcox
+from statsmodels.tsa.stattools import adfuller, kpss
+
+log_like = pd.Series(boxcox(train["Passengers"], lmbda=0), index=train.index)
+diffed = log_like.diff().dropna()  # remove level drift before reading autocorrelation
+
+print(adfuller(diffed)[1])  # lower is better here
+print(kpss(diffed)[1])      # higher is better here
+</code></pre>
+
+        <p>I like this snippet because it captures the real sequence. Transform first. Test second. Only then look at ACF and PACF plots and decide whether an autoregressive or moving-average term is warranted. Reversing that order is how people end up choosing lags for a series whose basic statistical footing is still unstable.</p>
+        <h3>Why plain ARIMA underperforms here</h3>
+        <p>The notebook's `ARIMA(1,1,1)` lands at `RMSE 88.88` and `MAPE 12.89`, no better than the non-seasonal ARMA result. That is not a scandal. It is exactly what I would expect when the main shape in the data is annual seasonality. Differencing removes trend, but it does not teach the model that July behaves like July and November behaves like November.</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div class="stamp">Field Note 04 / Seasonality deserves first-class treatment</div>
+        <h2>The best no-promotion models win because they respect the calendar, not because they sound sophisticated</h2>
+      </div>
+      <div class="prose">
+        <p>There is a habit in technical writing that I distrust: treating classical smoothing models as quaint warm-up acts and ARIMA variants as the serious work. On this notebook, that hierarchy collapses. Holt-Winters is not a baseline to apologize for. It is a compact expression of what the data is clearly doing: rising demand, repeating seasonality, and a seasonal effect that scales with the level.</p>
+        <p>The multiplicative Holt-Winters model slightly beats the additive version on RMSE, while the additive version edges it on MAPE. I read that as a tie broken by interpretation. Because the seasonal wave visibly widens over time, the multiplicative framing is more faithful to the series structure even if the margin is narrow. By contrast, the seasonal ARIMA run with `order=(1,1,1)` and `seasonal_order=(1,1,1,12)` reaches `RMSE 37.51` and `MAPE 7.36`. That is strong, but it is not obviously better than the simpler seasonal smoother.</p>
+
+<pre><code>from statsmodels.tsa.holtwinters import ExponentialSmoothing
+
+hw_model = ExponentialSmoothing(
+    np.asarray(train["Passengers"]),
+    trend="add",
+    seasonal="mul",      # seasonal lift grows with the route level
+    seasonal_periods=12
+)
+hw_fit = hw_model.fit(optimized=True)
+forecast = hw_fit.forecast(len(test))
+</code></pre>
+
+        <p>If I were writing the decision memo for an operations team, I would not hide that result under a pile of ARIMA vocabulary. I would say it plainly: the first forecasting job was to admit this route is seasonal, and the second was to parameterize that seasonality cleanly. Everything else comes later.</p>
+        <p>This is also the point where forecast confidence has to stay honest. A seasonal model can capture the expected contour of the next year, but it cannot tell you why a strike, a pricing change, a competitor launch, or a schedule cut might break the pattern. The forecast is a structured expectation, not a promise. Airline planners who confuse those two end up treating model miss as analyst failure when the real issue is unmodeled operating context.</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div class="stamp">Field Note 05 / External events can help, but they are not free</div>
+        <h2>SARIMAX wins this notebook because promotion timing adds signal after the seasonal backbone is already in place</h2>
+      </div>
+      <div class="prose">
+        <p>The exogenous variable in the notebook is a monthly `Event` flag loaded from `promotion.csv`. The visible portion of the output shows stretches of zeros interspersed with months marked as promotional periods, especially across the holdout window in 1959 and 1960. That matters because demand spikes are not always pure seasonality. Marketing pushes and fare campaigns can amplify the underlying rhythm.</p>
+        <p>Once that event series is added, the `SARIMAX` model becomes the best performer in the notebook at `RMSE 26.58` and `MAPE 4.64`. The reported event coefficient is `0.034350` on the transformed scale, small enough to sound modest but strong enough to improve the error profile. I believe that result. I also think it is the easiest one to misuse.</p>
+
+<pre><code>from statsmodels.tsa.statespace.sarimax import SARIMAX
+
+model = SARIMAX(
+    train_data_boxcox,
+    order=(1, 1, 1),
+    seasonal_order=(1, 1, 1, 12),
+    exog=promo_train       # future campaign calendar must be known
+)
+fit = model.fit(disp=False)
+forecast = np.exp(
+    fit.predict(test.index.min(), test.index.max(), exog=promo_test)
+)
+</code></pre>
+
+        <p>The catch is hiding in the comment: the forecast improves because the future promotion calendar is fed into the model. That can be legitimate. Airlines often do know planned campaigns, school-holiday pushes, and fare-sale windows months ahead. But if the event flag is standing in for irregular commercial activity that is not actually scheduled, then the notebook is granting the model information the forecaster would not possess at the time of prediction.</p>
+        <p>This is where a human practitioner needs to be more skeptical than the metric table. A lower MAPE is welcome, but only if the exogenous variable is operationally forecastable. If the commercial team can commit to the promotion calendar, `SARIMAX` deserves a seat at the table. If not, a seasonal-only model may be the more trustworthy tool because it is honest about what the business actually knows in advance.</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div class="stamp">Field Note 06 / One holdout split is useful, not sufficient</div>
+        <h2>Temporal discipline means scoring the model the way the future arrives</h2>
+      </div>
+      <div class="prose">
+        <p>The notebook uses a clean single split: first 120 months for training, last 24 months for testing. That is better than a random shuffle, which would be indefensible here. Still, if I were taking this forecast into an airline planning cycle, I would not stop with one out-of-time window. I would run a rolling-origin evaluation so I could see whether the model behaves consistently across different forecast starting points.</p>
+        <p>This matters because airline demand is path-dependent. A model might look excellent when the holdout begins near a stable seasonal phase and much weaker when the cut lands near a structural shift or an unusual promotional cluster. Rolling evaluation turns one lucky or unlucky split into a sequence of tests that better resembles reality: every month, the window moves, the information set expands, and the model has to prove itself again.</p>
+      </div>
+
+      <div class="wide-figure">
+        <p class="figure-tag">Figure B / Evaluation calendar</p>
+        <figure>
+          <svg viewBox="0 0 1100 420" role="img" aria-label="Rolling-origin evaluation timeline for airline forecasting">
+            <defs>
+              <marker id="timeline-arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" fill="#111111"></path>
+              </marker>
+            </defs>
+
+            <rect x="26" y="26" width="1048" height="368" fill="#ffffff" stroke="#111111" stroke-width="1.5"></rect>
+            <text x="52" y="62" font-family="IBM Plex Sans, sans-serif" font-size="22" font-weight="600" fill="#111111">The notebook uses one holdout. A production-minded review would keep rolling the cut forward.</text>
+
+            <line x1="120" y1="112" x2="1010" y2="112" stroke="#111111" stroke-width="1.5" marker-end="url(#timeline-arrow)"></line>
+            <text x="120" y="96" font-family="IBM Plex Mono, monospace" font-size="12" fill="#555555">1949</text>
+            <text x="400" y="96" font-family="IBM Plex Mono, monospace" font-size="12" fill="#555555">1953</text>
+            <text x="670" y="96" font-family="IBM Plex Mono, monospace" font-size="12" fill="#555555">1957</text>
+            <text x="932" y="96" font-family="IBM Plex Mono, monospace" font-size="12" fill="#555555">1960</text>
+
+            <text x="52" y="160" font-family="IBM Plex Mono, monospace" font-size="12" fill="#555555">NOTEBOOK SPLIT</text>
+            <rect x="120" y="140" width="620" height="28" fill="#111111"></rect>
+            <rect x="740" y="140" width="180" height="28" fill="#ffffff" stroke="#111111" stroke-width="1.5"></rect>
+            <text x="380" y="159" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="13" fill="#f5f5f5">Train: Jan 1949 to Dec 1958</text>
+            <text x="830" y="159" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="13" fill="#111111">Test: 1959 to 1960</text>
+
+            <text x="52" y="220" font-family="IBM Plex Mono, monospace" font-size="12" fill="#555555">WINDOW A</text>
+            <rect x="120" y="200" width="470" height="28" fill="#111111"></rect>
+            <rect x="590" y="200" width="90" height="28" fill="#ffffff" stroke="#111111" stroke-width="1.5"></rect>
+            <text x="355" y="219" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="13" fill="#f5f5f5">Fit through Dec 1956</text>
+            <text x="635" y="219" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="13" fill="#111111">Score 1957</text>
+
+            <text x="52" y="270" font-family="IBM Plex Mono, monospace" font-size="12" fill="#555555">WINDOW B</text>
+            <rect x="120" y="250" width="560" height="28" fill="#111111"></rect>
+            <rect x="680" y="250" width="90" height="28" fill="#ffffff" stroke="#111111" stroke-width="1.5"></rect>
+            <text x="400" y="269" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="13" fill="#f5f5f5">Fit through Dec 1957</text>
+            <text x="725" y="269" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="13" fill="#111111">Score 1958</text>
+
+            <text x="52" y="320" font-family="IBM Plex Mono, monospace" font-size="12" fill="#555555">WINDOW C</text>
+            <rect x="120" y="300" width="650" height="28" fill="#111111"></rect>
+            <rect x="770" y="300" width="90" height="28" fill="#ffffff" stroke="#111111" stroke-width="1.5"></rect>
+            <text x="445" y="319" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="13" fill="#f5f5f5">Fit through Dec 1958</text>
+            <text x="815" y="319" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="13" fill="#111111">Score 1959</text>
+
+            <text x="52" y="370" font-family="IBM Plex Mono, monospace" font-size="12" fill="#555555">WINDOW D</text>
+            <rect x="120" y="350" width="740" height="28" fill="#111111"></rect>
+            <rect x="860" y="350" width="90" height="28" fill="#ffffff" stroke="#111111" stroke-width="1.5"></rect>
+            <text x="490" y="369" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="13" fill="#f5f5f5">Fit through Dec 1959</text>
+            <text x="905" y="369" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="13" fill="#111111">Score 1960</text>
+          </svg>
+          <figcaption>A rolling-origin backtest scores the model the way planning actually works: the calendar moves forward, the information set expands, and every new forecast must survive a fresh year of scrutiny.</figcaption>
+        </figure>
+      </div>
+
+      <div class="prose">
+        <p>I would also want the scorecard sliced by horizon. Month-one error and month-twelve error are not the same operational problem. An aircraft swap for next month can tolerate less uncertainty than a staffing envelope for next summer. Forecast evaluation should reflect that asymmetry instead of compressing all mistakes into one average.</p>
+      </div>
+    </section>
+
+    <section class="section closing">
+      <div class="section-head">
+        <div class="stamp">Field Note 07 / Decision use</div>
+        <h2>A forecast earns trust when it changes planning behavior without pretending to remove uncertainty</h2>
+      </div>
+      <div class="prose">
+        <p>If I were handing this work to an airline operations lead, I would summarize it in four lines. First, the route is structurally seasonal and should be modeled that way from the start. Second, the raw series is non-stationary, so ARIMA-family methods require transformation and differencing before they deserve attention. Third, seasonal classical methods already do very well, which means complexity must justify itself. Fourth, the exogenous promotion signal improves performance only if the promotion calendar is genuinely knowable at forecast time.</p>
+        <p>That is enough to support real decisions. Use the central path to size aircraft and crew for the median case. Use the uncertainty band to set tolerances around catering loads, gate planning, and schedule buffers. Use the event-aware variant only when commercial activity is committed early enough to count as a forecast input rather than a retrospective explanation.</p>
+        <ol>
+          <li>Keep a seasonal-only model in production as the challenger baseline, even if `SARIMAX` is the current leader.</li>
+          <li>Re-run ADF and KPSS checks when new history changes the variance profile; a drifting series deserves fresh diagnostics, not stale assumptions.</li>
+          <li>Backtest on rolling windows before expanding the model to more routes, because one clean holdout can flatter a method that will not travel well.</li>
+          <li>Report prediction intervals beside every operational forecast. A single passenger count is presentation theater. A bounded range is planning information.</li>
+        </ol>
+        <p>The notebook's best contribution is not that it tried many methods. It is that, read carefully, it exposes the right order of operations. See the seasonal structure. Stabilize the series. Beat the baselines honestly. Add outside signals only when the business can know them in advance. That is the difference between a forecast you can defend and a line chart you can merely admire.</p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
