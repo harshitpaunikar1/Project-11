@@ -12,3 +12,7 @@
 
 - Task summary: Weekend code review of my own work. Mostly reading, but ended up fixing three things that were bothering me.
 - Deliverable: Good enough to not be embarrassing.
+## 2021-01-04 - Day 2: Data collection pass
+
+- Task summary: Used the next day to keep the momentum going for Airline Passenger Forecasting. I was still piecing things together, so I focused on trying to gather the raw time series data and document its date granularity and source and wrote down the stuff that looked important. This was still the messy setup part where I was opening files, checking examples, and trying not to overthink it too early. Most of the progress here came from patient cleanup more than anything flashy.
+- Deliverable: I wrapped up the day with raw dataset mostly in place. It was not perfect, but it was good enough to keep the project moving. I also left myself a few rough reminders for the next day so I would not have to rediscover the same context again.
