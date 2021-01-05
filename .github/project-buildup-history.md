@@ -16,3 +16,7 @@
 
 - Task summary: Used the next day to keep the momentum going for Airline Passenger Forecasting. I was still piecing things together, so I focused on trying to gather the raw time series data and document its date granularity and source and wrote down the stuff that looked important. This was still the messy setup part where I was opening files, checking examples, and trying not to overthink it too early. Most of the progress here came from patient cleanup more than anything flashy.
 - Deliverable: I wrapped up the day with raw dataset mostly in place. It was not perfect, but it was good enough to keep the project moving. I also left myself a few rough reminders for the next day so I would not have to rediscover the same context again.
+## 2021-01-05 - Day 3: Notebook setup pass
+
+- Task summary: By this point I had the rough direction, so the work became more practical. I spent most of the day trying to create a notebook with imports, quick data checks, and a reproducible starting point and make the whole thing feel less half baked. Once the base made some sense, I could finally move a bit faster and stop second guessing every tiny decision. A lot of this also meant checking if the numbers were making sense and not just trusting the first result that showed up.
+- Deliverable: I wrapped up the day with starter notebook mostly in place. It was not perfect, but it was good enough to keep the project moving. There were still a couple of loose parts, but nothing serious enough to block the next step.
