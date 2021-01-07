@@ -24,3 +24,7 @@
 
 - Task summary: By this point I had the rough direction, so the work became more practical. I spent most of the day trying to fix date parsing issues, missing periods, and obvious anomalies and make the whole thing feel less half baked. The middle part always takes longer than it should, mostly becuase one fix usually reveals two more things to clean up. I kept bouncing between the notebook, small observations, and quick plots until the direction felt usable.
 - Deliverable: I wrapped up the day with clean time series mostly in place. It was not perfect, but it was good enough to keep the project moving. It was not super polished, just stable enough that I felt okay moving forward.
+## 2021-01-07 - Day 5: Trend review
+
+- Task summary: By this point I had the rough direction, so the work became more practical. I spent most of the day trying to plot trend, seasonality, and rolling behavior to understand the series and make the whole thing feel less half baked. By now I had enough structure to keep going without staring at the screen too long, which honestly helped a lot. Most of the progress here came from patient cleanup more than anything flashy.
+- Deliverable: I wrapped up the day with trend charts mostly in place. It was not perfect, but it was good enough to keep the project moving. I also left myself a few rough reminders for the next day so I would not have to rediscover the same context again.
