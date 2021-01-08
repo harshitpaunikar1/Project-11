@@ -24,3 +24,7 @@
 
 - Task summary: By this point I had the rough direction, so the work became more practical. I spent most of the day trying to plot trend, seasonality, and rolling behavior to understand the series and make the whole thing feel less half baked. By now I had enough structure to keep going without staring at the screen too long, which honestly helped a lot. Most of the progress here came from patient cleanup more than anything flashy.
 - Deliverable: I wrapped up the day with trend charts mostly in place. It was not perfect, but it was good enough to keep the project moving. I also left myself a few rough reminders for the next day so I would not have to rediscover the same context again.
+## 2021-01-08 - Day 6: Feature creation
+
+- Task summary: This was the middle stretch where the project started feeling real. I kept going and tried to create lag, rolling, and calendar features if they help the baseline, then cleaned up whatever looked confusing or weak from the earlier days. Once the base made some sense, I could finally move a bit faster and stop second guessing every tiny decision. A lot of this also meant checking if the numbers were making sense and not just trusting the first result that showed up.
+- Deliverable: Ended the day with time features in hand, plus a few side notes on what still needed fixing later. There were still a couple of loose parts, but nothing serious enough to block the next step.
