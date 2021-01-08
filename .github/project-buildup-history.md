@@ -32,3 +32,7 @@
 
 - Task summary: This was the middle stretch where the project started feeling real. I kept going and tried to create lag, rolling, and calendar features if they help the baseline, then cleaned up whatever looked confusing or weak from the earlier days. Once the base made some sense, I could finally move a bit faster and stop second guessing every tiny decision. A lot of this also meant checking if the numbers were making sense and not just trusting the first result that showed up.
 - Deliverable: Ended the day with time features in hand, plus a few side notes on what still needed fixing later. There were still a couple of loose parts, but nothing serious enough to block the next step.
+## 2021-01-08 - Day 6: Feature creation
+
+- Task summary: Spent another hour on this: fixed a type coercion issue that was causing silent NaN propagation downstream.
+- Deliverable: Small fix, clean result.
