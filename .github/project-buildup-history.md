@@ -36,3 +36,7 @@
 
 - Task summary: Spent another hour on this: fixed a type coercion issue that was causing silent NaN propagation downstream.
 - Deliverable: Small fix, clean result.
+## 2021-01-09 - Day 5: Trend review
+
+- Task summary: Sunday evening, couldn't leave the failing assert alone. Tracked it down to a missing sort step. Resolved.
+- Deliverable: Small fix, clean result.
