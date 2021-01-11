@@ -40,3 +40,7 @@
 
 - Task summary: Sunday evening, couldn't leave the failing assert alone. Tracked it down to a missing sort step. Resolved.
 - Deliverable: Small fix, clean result.
+## 2021-01-11 - Day 7: Baseline model
+
+- Task summary: This was the middle stretch where the project started feeling real. I kept going and tried to train a simple baseline model to set a minimum bar, then cleaned up whatever looked confusing or weak from the earlier days. The middle part always takes longer than it should, mostly becuase one fix usually reveals two more things to clean up. I kept bouncing between the notebook, small observations, and quick plots until the direction felt usable.
+- Deliverable: Ended the day with baseline forecast in hand, plus a few side notes on what still needed fixing later. It was not super polished, just stable enough that I felt okay moving forward.
