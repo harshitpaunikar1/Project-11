@@ -56,3 +56,7 @@
 
 - Task summary: After stepping away for a bit, came back and the variable names were inconsistent so cleaned those up across the notebook before calling it done.
 - Deliverable: Wrapped it up properly this time.
+## 2021-01-13 - Day 9: Evaluation
+
+- Task summary: One more pass: found a duplicate function that slipped in during copy-paste. Removed it.
+- Deliverable: Pushed before end of day.
