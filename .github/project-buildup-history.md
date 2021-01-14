@@ -72,3 +72,7 @@
 
 - Task summary: One more pass: pushed a config tweak after noticing the wrong default param was being used.
 - Deliverable: Cleaner than this morning's version.
+## 2021-01-14 - Day 10: Business readout
+
+- Task summary: Got stuck mid-afternoon and had to regroup — fixed a type coercion issue that was causing silent NaN propagation downstream.
+- Deliverable: Pushed before end of day.
