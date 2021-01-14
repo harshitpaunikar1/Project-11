@@ -68,3 +68,7 @@
 
 - Task summary: Got stuck mid-afternoon and had to regroup — pushed a config tweak after noticing the wrong default param was being used.
 - Deliverable: Nothing dramatic — just keeping things tidy.
+## 2021-01-14 - Day 10: Business readout
+
+- Task summary: One more pass: pushed a config tweak after noticing the wrong default param was being used.
+- Deliverable: Cleaner than this morning's version.
