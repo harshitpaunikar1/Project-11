@@ -64,3 +64,7 @@
 
 - Task summary: Closer to the end, I was mostly tightening things up instead of inventing new scope. The job for the day was to translate the result into a plain-language business takeaway so the final result looked a bit more complete. Most of the heavy lifting was already done, so this part was more about making the rough edges less obvious. I kept bouncing between the notebook, small observations, and quick plots until the direction felt usable.
 - Deliverable: Ended the day with decision summary in hand, plus a few side notes on what still needed fixing later. It was not super polished, just stable enough that I felt okay moving forward.
+## 2021-01-14 - Day 10: Business readout
+
+- Task summary: Got stuck mid-afternoon and had to regroup — pushed a config tweak after noticing the wrong default param was being used.
+- Deliverable: Nothing dramatic — just keeping things tidy.
