@@ -48,3 +48,7 @@
 
 - Task summary: Closer to the end, I was mostly tightening things up instead of inventing new scope. The job for the day was to organize the notebook and README so someone else can follow the work so the final result looked a bit more complete. Toward the end I mostly kept trimming weird bits, fixing wording, and tying the loose parts together. Most of the progress here came from patient cleanup more than anything flashy.
 - Deliverable: Ended the day with readable documentation in hand, plus a few side notes on what still needed fixing later. I also left myself a few rough reminders for the next day so I would not have to rediscover the same context again.
+## 2021-01-18 - Day 12: Presentation wrap
+
+- Task summary: Used the last day on Airline Passenger Forecasting to slow down and finish the loose ends. I mainly had to prepare charts or slides that tell the story without requiring technical background and make sure the project told a clean story from start to finish. I was not trying to add anything fancy here, just making sure the thing looked complete enough to show someone. A lot of this also meant checking if the numbers were making sense and not just trusting the first result that showed up.
+- Deliverable: Finished with presentation-ready charts looking decent enough to call this version done, even if I could still nitpick a few things. There were still a couple of loose parts, but nothing serious enough to block the next step.
