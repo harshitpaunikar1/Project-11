@@ -66,15 +66,15 @@
 - Deliverable: Ended the day with decision summary in hand, plus a few side notes on what still needed fixing later. It was not super polished, just stable enough that I felt okay moving forward.
 ## 2021-01-14 - Day 10: Business readout
 
-- Task summary: Got stuck mid-afternoon and had to regroup — pushed a config tweak after noticing the wrong default param was being used.
-- Deliverable: Nothing dramatic — just keeping things tidy.
+- Task summary: Got stuck mid-afternoon and had to regroup - pushed a config tweak after noticing the wrong default param was being used.
+- Deliverable: Nothing dramatic - just keeping things tidy.
 ## 2021-01-14 - Day 10: Business readout
 
 - Task summary: One more pass: pushed a config tweak after noticing the wrong default param was being used.
 - Deliverable: Cleaner than this morning's version.
 ## 2021-01-14 - Day 10: Business readout
 
-- Task summary: Got stuck mid-afternoon and had to regroup — fixed a type coercion issue that was causing silent NaN propagation downstream.
+- Task summary: Got stuck mid-afternoon and had to regroup - fixed a type coercion issue that was causing silent NaN propagation downstream.
 - Deliverable: Pushed before end of day.
 ## 2021-01-15 - Day 11: Project write-up check
 
